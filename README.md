@@ -2,72 +2,99 @@
 
 Gazebo simulation packages for the SD Twizy vehicle
 
-### Requirements:
+## Requirements
 
-##### - Ubuntu 16.04 LTS
-##### - ROS Kinetic [ros-kinetic-desktop-full](http://wiki.ros.org/kinetic/Installation/Ubuntu)
-##### - Catkin Command Line Tools [catkin_tools](https://catkin-tools.readthedocs.io/en/latest/installing.html)
-##### - Gazebo [ros-kinetic-gazebo-ros-pkgs](http://gazebosim.org/tutorials?tut=ros_installing)  
-This model has been tested with Gazebo 7.16. Run `gazebo --version` to make sure you have the correct version installed.  
-To update to Gazebo 7.16, do:  
-```
-sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
-sudo apt update && sudo apt upgrade
-```
+- Ubuntu 18.04 LTS
+- ROS Melodic [ros-melodic-desktop-full](http://wiki.ros.org/melodic/Installation/Ubuntu)
 
-### Setup your workspace:
-#### A. Create a catkin workspace:
-To setup your workspace after installing ROS Kinetic and catkin tools, do:
-```
-source /opt/ros/kinetic/setup.bash
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/
-catkin build # OR catkin_make
-source devel/setup.bash
-```
-For more information, visit [create_a_workspace](http://wiki.ros.org/catkin/Tutorials/create_a_workspace)
+This model, specifically the Gazebo plugin that implements the control
+interface, requires Gazebo 9, which is the default version for ROS
+Melodic, and will be installed with `rosdep` below.
 
-#### B. Initialize your catkin workspace:
-Navigate to the root of your catkin workspace, if you are not already with `cd ~/catkin_ws`.
-Initialize your workspace:
-```
-catkin init
-```
+## Building
 
-#### C. Clone this repository or copy its contents at your `~/catkin_ws/src` folder of the catkin workspace you just initialized.
-#### D. Navigate to your workspace, install the dependencies and build the simulation
-```
-cd ~/catkin_ws
-rosdep install --from-paths src/ --ignore-src -r -y
-catkin build
+* Go to the `src` directory of your workspace and clone this
+  repository or copy its contents.
+* When using Git, check out this branch:
 
-# OR catkin build sd_robot sd_control sd_description sd_control_msgs 
-# OR catkin_make if you previously built with catkin_make
-```
+        cd SD-TwizyModel && git checkout melodic
 
-After the built has successfully finished, source your workspace:
-```
-source devel/setup.bash
-```
+* Make sure all required dependecies are installed using
+  [`rosdep`](http://wiki.ros.org/rosdep). From the top directory of
+  your catkin workspace run (assuming this repository is cloned
+  directly under `src`):
 
-#### E. Launch the simulation:
-This launches the vehicle model in Gazebo and RViz for visualizing the sensors' output.
+        rosdep update && rosdep install --from-paths src/SD-TwizyModel/ --ignore-src -r -y
+
+  Now you can build the packages in this repository. `catkin_make`,
+  [`catkin_tools`](https://catkin-tools.readthedocs.io/en/latest/installing.html)
+  and
+  [`colcon`](https://catkin-tools.readthedocs.io/en/latest/installing.html)
+  should all work.
+
+### Autoware
+
+The `sd_autoware` package included in this repository provides an
+interface to be able to control the StreetDrone model using the
+[Autoware.AI](https://catkin-tools.readthedocs.io/en/latest/installing.html)
+open-source self-driving car stack.
+
+By default this package is not built to prevent any problems when
+Autoware.AI is not available. If it is available and you do want to
+use the package, remove the file
+`streetdrone_model/sd_autoware/CATKIN_IGNORE` and build again.
+
+## Launch the simulation
+The following launches the vehicle model in Gazebo and RViz for
+visualizing the sensors' output:
+
 ```
-roslaunch sd_robot sd_twizy_empty.launch
-# OR roslaunch sd_robot sd_twizy_worlds.launch enable_rviz:=true world:=empty
+roslaunch sd_bringup sd_twizy_gazebo.launch
 ```
 
-<p align="center"> 
-<img src="streetdrone_model/sd_docs/imgs/sd.png">
+<p align="center"> <img src="streetdrone_model/sd_docs/imgs/sd.png">
 </p>
 
-You might need to update your ignition-math version `sudo apt upgrade libignition-math2`
+There are several more launch files included to provide a more
+interesting surrounding for the vehicle (see known issues below to
+make sure they work); try for instance:
 
-### Sensors
-**LiDAR:** VLP - 16 Velodyne  
-**Cameras:** 8 x Blackfly S 2.3MP  
-The scripts for the sensors are written based on the common scripts that exist for sensors in Gazebo.
+```
+roslaunch sd_bringup sd_twizy_gazebo_default.launch
+```
+
+or:
+
+```
+roslaunch sd_bringup sd_twizy_large_city.launch
+```
+
+### Display the robot only in Gazebo
+
+You can use the `sd_twizy_spawn.launch` to only launch the model in an
+already running instance of Gazebo. For instance, open an empty world
+model:
+
+    roslaunch gazebo_ros empty_world.launch
+
+and then launch the model with:
+
+    roslaunch sd_bringup sd_twizy_spawn.launch
+
+#### Known Issues:
+
+* `[Err] [REST.cc:205] Error in REST request` - this is a known error
+    in Gazebo 9. To fix it, edit `~/.ignition/fuel/config.yaml` and
+    change the server URL in there from https://api.ignitionfuel.org
+    to https://api.ignitionrobotics.org
+* `Couldn't open joystick force feedback!` - this error is non-fatal
+    and can be ignored. It's a common error in the `joystick_drivers`
+    node
+* Als de pointcloud niet word geladen voer dan het commando:
+'''
+sudo apt-get install ros-melodic-velodyne-*
+'''
+uit
 
 ## Controlling the Robot
 ### Joystick
@@ -88,31 +115,16 @@ enable control on a Logitech F710 Gamepad:
 roslaunch sd_control sd_twizy_control_teleop.launch enable_button:=5 throttle_axis:=1 steer_axis:=2
 ```
 
-### Keyboard
-The simulation can also be controlled by the keyboard. To launch the sd_teleop_keyboard node, run the following:
+### Autoware.AI
+If the `sd_autoware` package is built, as described above, run the
+following to launch the required nodes to be able to work with
+Autoware.AI:
 ```
-./src/streetdrone_model/sd_control/keyboardlaunch.sh 
-```
-And follow the instructions on the terminal
-
-### SD-VehicleInterface
-Find it here: https://github.com/streetdrone-home/SD-VehicleInterface  
-This package is responsible for the communication between the [StreetDrone](https://streetdrone.com/) vehicles and ROS based self-driving software stacks.
-
-The interface bridges the gap between ROS kinetic and the OpenCAN vehicle interface of the StreetDrone Xenos Control Unit (XCU) integrated into the SD Twizy R&D and SD ENV200 vehicles.
-[Follow the instructions here](https://github.com/streetdrone-home/SD-VehicleInterface/blob/master/README.md)
-
-Clone or copy the SD-VehicleInterface on the `src/` of your catkin workspace, build it according to the instructions on the README and launch it alongside the simulation with:
-```
-roslaunch sd_vehicle_interface sd_vehicle_interface.launch sd_vehicle:=twizy sd_gps_imu:=none sd_simulation_mode:=true
+roslaunch sd_autoware sd_autoware.launch
 ```
 
-### Display the robot only in rviz:
-First, make sure you have rviz installed, by doing:
-```
-cd ~/catkin_ws
-roscore
-rviz
-```
-If you don't have rviz installed, do `sudo apt-get install ros-kinetic-rviz*`.  
-The configuration file of the SD Twizy is located at `~/catkin_ws/src/streetdrone_model/sd_robot/config/sd_twizy.rviz`
+This launches a node that translates Autoware.AI's `ctrl_cmd` topic to
+`sd_control` messages, with a PID controller in between to regulate
+the throttle based on the desired linear velocity. This means that the
+model can be directly controlled using the output of Autoware.AI's
+Pure Pursuit or MPC nodes.
