@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1)
 project(sd_control)
 
 set (CMAKE_CXX_STANDARD 11)
@@ -8,14 +8,12 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
   nav_msgs
-  sd_msgs
-  rospy
-
+  sd_control_msgs
 )
 
-catkin_package(CATKIN_DEPENDS rospy)
+find_package(gazebo 9 REQUIRED)
 
-find_package(gazebo 7 REQUIRED)
+catkin_package()
 
 install(DIRECTORY launch/
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
@@ -26,10 +24,6 @@ install(DIRECTORY config/
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
         FILES_MATCHING PATTERN "*.yaml"
         )
-
-catkin_install_python(PROGRAMS
-        src/sd_teleop_keyboard.py
-        DESTINATION share/${PROJECT_NAME})
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
@@ -52,4 +46,3 @@ install(TARGETS SdControlPlugin sd_teleop_joy
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-

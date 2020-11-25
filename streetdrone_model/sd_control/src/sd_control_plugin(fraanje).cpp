@@ -23,6 +23,7 @@ namespace sd_control
 
     model_ = model;
     world_ = model_->GetWorld();
+    //auto physicsEngine = world_->GetPhysicsEngine();
     auto physicsEngine = world_->Physics();
     physicsEngine->SetParam("friction_model", std::string{"cone_model"});
 
@@ -106,6 +107,10 @@ namespace sd_control
     // Compute wheelbase, frontTrackWidth, and rearTrackWidth
     //  first compute the positions of the 4 wheel centers
     //  again assumes wheel link is child of joint and has only one collision
+    //auto fl_center_pos = fl_wheel_joint_->GetChild()->GetCollision(id)->GetWorldPose().Ign().Pos();
+    //auto fr_center_pos = fr_wheel_joint_->GetChild()->GetCollision(id)->GetWorldPose().Ign().Pos();
+    //auto bl_center_pos = bl_wheel_joint_->GetChild()->GetCollision(id)->GetWorldPose().Ign().Pos();
+    //auto br_center_pos = br_wheel_joint_->GetChild()->GetCollision(id)->GetWorldPose().Ign().Pos();
     auto fl_center_pos = fl_wheel_joint_->GetChild()->GetCollision(id)->WorldPose().Pos();
     auto fr_center_pos = fr_wheel_joint_->GetChild()->GetCollision(id)->WorldPose().Pos();
     auto bl_center_pos = bl_wheel_joint_->GetChild()->GetCollision(id)->WorldPose().Pos();
@@ -128,16 +133,20 @@ namespace sd_control
       std::bind(&SdControlPlugin::Update, this));
   }
 
-  void SdControlPlugin::controlCallback(const sd_control_msgs::Control & msg)
+  void SdControlPlugin::controlCallback(const sd_msgs::SDControl & msg)
   {
     std::lock_guard<std::mutex> lock{mutex_};
     control_cmd_ = msg;
+	 if (control_cmd_.torque > 0 && control_cmd_.torque <= 25){
+	 control_cmd_.torque = 0; //This captures the dead pedal band on the real vehicle. 
+	 }
   }
 
   void SdControlPlugin::Update()
   {
     std::lock_guard<std::mutex> lock{mutex_};
 
+    //auto cur_time = world_->GetSimTime();
     auto cur_time = world_->SimTime();
     auto dt = (cur_time - last_sim_time_).Double();
     if (dt < 0) {
@@ -150,19 +159,23 @@ namespace sd_control
       return;
     }
 
-    auto fl_steering_angle = fl_wheel_steering_joint_->Position();
-    auto fr_steering_angle = fr_wheel_steering_joint_->Position();
+    //auto fl_steering_angle = fl_wheel_steering_joint_->GetAngle(0).Radian();
+    //auto fr_steering_angle = fr_wheel_steering_joint_->GetAngle(0).Radian();
+    auto fl_steering_angle = fl_wheel_steering_joint_->Position(0);
+    auto fr_steering_angle = fr_wheel_steering_joint_->Position(0);
 
     auto fl_wheel_angular_velocity = fl_wheel_joint_->GetVelocity(0);
     auto fr_wheel_angular_velocity = fr_wheel_joint_->GetVelocity(0);
     auto bl_wheel_angular_velocity = bl_wheel_joint_->GetVelocity(0);
     auto br_wheel_angular_velocity = br_wheel_joint_->GetVelocity(0);
 
+    //auto chassis_linear_velocity = chassis_link_->GetWorldCoGLinearVel();
     auto chassis_linear_velocity = chassis_link_->WorldCoGLinearVel();
 
+    // GetSquaredLength -> SquaredLength
     auto drag_force = -chassis_aero_force_gain_
       * chassis_linear_velocity.SquaredLength()
-      * chassis_linear_velocity.Normalized();
+      * chassis_linear_velocity.Normalize();
     chassis_link_->AddForce(drag_force);
 
     auto steer_ratio = std::max(-100.0, std::min(100.0, control_cmd_.steer)) / 100.0;
@@ -187,10 +200,10 @@ namespace sd_control
 
     auto throttle_ratio = 0.0;
     auto brake_ratio = 0.0;
-    if (control_cmd_.throttle > 0)
-      throttle_ratio = std::min(100.0, control_cmd_.throttle) / 100.0;
-    if (control_cmd_.throttle < 0)
-      brake_ratio = std::min(100.0, -control_cmd_.throttle) / 100.0;
+    if (control_cmd_.torque > 0)
+      throttle_ratio = std::min(100.0, control_cmd_.torque) / 100.0;
+    if (control_cmd_.torque < 0)
+      brake_ratio = std::min(100.0, -control_cmd_.torque) / 100.0;
 
     auto regen_braking_ratio = 0.025;
 
@@ -215,55 +228,8 @@ namespace sd_control
     bl_wheel_joint_->SetForce(0, throttle_torque);
     br_wheel_joint_->SetForce(0, throttle_torque);
 
-    publishOdometry();
 
     last_sim_time_ = cur_time;
-  }
-
-  void SdControlPlugin::publishOdometry()
-  {
-    auto current_time = ros::Time::now();
-    auto pose = model_->WorldPose();
-
-    // Global rotation and translation
-    auto qt = tf::Quaternion ( pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z(), pose.Rot().W() );
-    auto vt = tf::Vector3 ( pose.Pos().X(), pose.Pos().Y(), pose.Pos().Z() );
-
-    auto odom = nav_msgs::Odometry{};
-
-    odom.pose.pose.position.x = vt.x();
-    odom.pose.pose.position.y = vt.y();
-    odom.pose.pose.position.z = vt.z();
-
-    odom.pose.pose.orientation.x = qt.x();
-    odom.pose.pose.orientation.y = qt.y();
-    odom.pose.pose.orientation.z = qt.z();
-    odom.pose.pose.orientation.w = qt.w();
-
-    // get velocity in /odom frame
-    ignition::math::Vector3d linear;
-    linear = model_->WorldLinearVel();
-    odom.twist.twist.angular.z = model_->WorldAngularVel().Z();
-
-    // convert velocity to child_frame_id
-    float yaw = pose.Rot().Yaw();
-    odom.twist.twist.linear.x = cosf ( yaw ) * linear.X() + sinf ( yaw ) * linear.Y();
-    odom.twist.twist.linear.y = cosf ( yaw ) * linear.Y() - sinf ( yaw ) * linear.X();
-
-    // set covariance
-    odom.pose.covariance[0] = 0.00001;
-    odom.pose.covariance[7] = 0.00001;
-    odom.pose.covariance[14] = 1000000000000.0;
-    odom.pose.covariance[21] = 1000000000000.0;
-    odom.pose.covariance[28] = 1000000000000.0;
-    odom.pose.covariance[35] = 0.001;
-
-    // set header
-    odom.header.stamp = current_time;
-    odom.header.frame_id = "odom";
-    odom.child_frame_id = "base_link";
-
-    odometry_pub_.publish(odom);
   }
 
   double SdControlPlugin::collisionRadius(gazebo::physics::CollisionPtr coll) const
