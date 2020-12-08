@@ -29,9 +29,9 @@
         <arg name="world_name" value="$(find sd_bringup)/worlds/default.world"/>
     </include>
 
-   !-- <param command="$(find xacro)/xacro '$(find sd_description)/urdf/sd_twizy.urdf.xacro' --inorder" name="robot_description"/>
+    <param command="$(find xacro)/xacro '$(find sd_description)/urdf/sd_twizy.urdf.xacro' --inorder" name="robot_description"/>
     <node args="-urdf -model sd_twizy -param robot_description -x $(arg x) -y $(arg y) -z $(arg z) -R $(arg roll) -P $(arg pitch) -Y $(arg yaw)"
-          name="urdf_spawner" output="screen" pkg="gazebo_ros" respawn="false" type="spawn_model"/>-->
+          name="urdf_spawner" output="screen" pkg="gazebo_ros" respawn="false" type="spawn_model"/>
 
     <include file = "$(find sd_control)/launch/sd_twizy_control.launch"/>
 
@@ -43,8 +43,9 @@
 
   <node name="cartographer_node" pkg="cartographer_ros"
       type="cartographer_node" args="
-          -configuration_directory $(find cartographer_ros)/configuration_files
-          -configuration_basename backpack_2d.lua"
+          -configuration_directory
+              $(find sd_bringup)/config
+          -configuration_basename twizy2d.lua"
       output="screen">
     <remap from="points2" to="velodyne_points" />
     <remap from="odometry/filtered" to="odom"/>
