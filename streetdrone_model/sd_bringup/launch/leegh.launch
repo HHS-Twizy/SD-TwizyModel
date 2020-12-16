@@ -1,0 +1,61 @@
+<launch>
+
+  <node name="rviz" pkg="rviz" type="rviz" required="true"
+      args="-d $(find sd_bringup)/config/carto_2D.rviz" />
+
+    <env name="GAZEBO_MODEL_PATH" value="$(find sd_description)"/>
+    <env name="GAZEBO_RESOURCE_PATH" value="$(find sd_description)"/>
+    <arg name="namespace" default="sd_twizy"/>
+    <arg name="debug" default="false"/>
+    <arg name="gui" default="true"/>
+    <arg name="cmd_timeout" default="0.5"/>
+    <!--Pose-->
+    <arg name="x" default="0"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0.282"/>
+    <param name="use_sim_time"  value="true" />
+
+    <!--arg name="rvizconfig" default="$(find sd_bringup)/config/sd_twizy_rviz.rviz"/-->
+    <arg name="rvizconfig" default="$(find sd_bringup)/config/carto_2D.rviz"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="paused" value="false"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="headless" value="false"/>
+        <arg name="world_name" value="$(find sd_bringup)/worlds/shapes.world"/>
+    </include>
+
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find sd_description)/urdf/sd_twizy.urdf.xacro" />
+    
+    <node name="urdf_spawner" pkg="gazebo_ros"  type="spawn_model" 
+          args="-urdf -model sd_twizy -param robot_description -x $(arg x) -y $(arg y) -z $(arg z)"/>
+
+    <include file = "$(find sd_control)/launch/sd_twizy_control.launch"/>
+
+    
+    <param name="use_sim_time" value="true"/>
+
+  <!--<param name="robot_description"
+    textfile="$(find cartographer_ros)/urdf/sd_twizy.urdf" />-->
+
+
+  <node pkg="cartographer_ros" name="cartographer_node" type="cartographer_node" 
+       args="-configuration_directory $(find cartographer_ros)/configuration_files
+          -configuration_basename twizy2d.lua"
+      output="screen">
+    <remap from="points2" to="velodyne_points"/>
+    <!--remap from="odometry_topic" to="odom"/-->
+
+    <remap from="imu" to="/flat_imu" />
+  </node>
+
+  <!--node name="cartographer_tf" pkg="robot_state_publisher"
+    type="robot_state_publisher" /-->
+
+  <node pkg="cartographer_ros" name="cartographer_occupancy_grid_node"  
+        type="cartographer_occupancy_grid_node" args="-resolution 0.05" />
+
+    
+</launch>
