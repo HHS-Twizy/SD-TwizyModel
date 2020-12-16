@@ -32,7 +32,7 @@ sd_bringup is aangepast voor Google Cartographer
 ## Cartographer_ROS
 Voor simulatie van google cartographer met ROS moet je de instructies van Google Cartographer volgen  https://google-cartographer-ros.readthedocs.io/en/latest/compilation.html
 
-# De twizy2D.lua bestand hoort in src/cartographer_ros/cartographer_ros/configuration_files te zitten.
+### De twizy2D.lua bestand hoort in src/cartographer_ros/cartographer_ros/configuration_files te zitten.
 De cofiguratie binnen twizy2d.lua zijn gepersonaliseerd voor mijn computer,
 
 Verander zo nodig de refresh rate en sample rate als het te traag of als je computer meer aan kan.
