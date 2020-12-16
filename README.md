@@ -28,10 +28,16 @@ roslaunch sd_control sd_twizy_control_teleop.launch enable_button:=5 throttle_ax
 ```
 ## sd_bringup
 sd_bringup is aangepast voor Google Cartographer
-Vergeet niet om de twizy2D.lua bestand in src/cartographer_ros/cartographer_ros/configuration_files te zetten.
+
+## Cartographer_ROS
+Voor simulatie van google cartographer met ROS moet je de instructies van Google Cartographer volgen  https://google-cartographer-ros.readthedocs.io/en/latest/compilation.html
+
+# De twizy2D.lua bestand hoort in src/cartographer_ros/cartographer_ros/configuration_files te zitten.
 De cofiguratie binnen twizy2d.lua zijn gepersonaliseerd voor mijn computer,
 
 Verander zo nodig de refresh rate en sample rate als het te traag of als je computer meer aan kan.
 
 Als je computer toch nog te traag is kan je ook aan de minimum range en maximum range zitten van de velodyne VLP-16 LIDAR sensor.
+
+
 
